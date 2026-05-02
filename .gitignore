@@ -28,7 +28,7 @@ Thumbs.db
 # Project Specific
 cache.db
 *.db
-benchmark_report.md
+/benchmark_report.md
 
 # Sensitive
 .env.local
