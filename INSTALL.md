@@ -1,5 +1,7 @@
 # 安装指南
 
+> [English](INSTALL.md) | [中文](INSTALL_CN.md)
+
 ## 环境要求
 
 - Python 3.10+

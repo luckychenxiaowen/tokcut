@@ -1,5 +1,7 @@
 # Contributing to tokcut
 
+> **English** | [中文](CONTRIBUTING_CN.md)
+
 Thank you for your interest in contributing to tokcut! 🎉
 
 tokcut is a transparent multi-model token saving proxy. We welcome contributions of all kinds — bug reports, feature requests, documentation improvements, code changes, and benchmark reports.

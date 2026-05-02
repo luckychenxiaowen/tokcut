@@ -9,6 +9,11 @@
 </p>
 
 <p align="center">
+  <a href="README.md"><strong>English</strong></a> |
+  <a href="README_CN.md">中文</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/luckychenxiaowen/tokcut/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/luckychenxiaowen/tokcut?style=flat-square&color=10b981"></a>
   <a href="https://github.com/luckychenxiaowen/tokcut/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/luckychenxiaowen/tokcut?style=flat-square&color=6366f1"></a>
   <a href="https://pypi.org/project/tokcut"><img alt="PyPI" src="https://img.shields.io/pypi/v/tokcut?style=flat-square&color=f59e0b"></a>
@@ -264,7 +269,7 @@ python tests/benchmarks/benchmark.py
 
 ## 🤝 Contributing
 
-We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
+We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) ([中文](CONTRIBUTING_CN.md)) for guidelines.
 
 ### Quick contribution flow:
 1. Fork the repository
