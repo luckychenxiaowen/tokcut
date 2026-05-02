@@ -1,0 +1,139 @@
+{
+  "tasks": [
+    "代码修复",
+    "文本总结",
+    "知识问答",
+    "翻译任务",
+    "对话任务"
+  ],
+  "prompts": [
+    "我的 React 组件每次父组件更新时都重新渲染，尽管我用了 React.memo。请说明可能的原因有哪些，并给我修复代码。",
+    "请总结：今天上午我们召开了产品规划会议，讨论了A、B、C三个功能的优先级，最终决定先做A功能，因为它对用户增长最有利。下午又和技术团队确认了排期，预计两周内完成。",
+    "什么是大语言模型中的 RLHF？请解释其核心原理。",
+    "把下面英文翻译成中文：The development of AI has transformed industries, but also raises ethical concerns about privacy and employment.",
+    "用户说：我的订单三天了还没发货。你是客服，请给出一个专业回复。"
+  ],
+  "baseline": [
+    {
+      "content": "## React.memo 失效的常见原因及解决方案\n\n### 可能的原因\n\n1. **内联函数作为 props** - 每次渲染创建新函数引用\n2. **对象/数组作为 props** - 每次渲染创建新对象引用\n3. **children 属性** - 默认创建新 React 元素\n4. **Context 值变化** - 即使 memo 也会触发\n5. **state 在组件内部频繁变化**\n6. **使用了 useCallback/useMemo 但依赖项配置不当**\n\n### 示例代码及修复\n\n```jsx\n// ❌ 问题代码\nfunction Parent() {\n  const [count, setCount] = useState(0);\n  \n  // 问题1：内联函数\n  return (\n    <Child \n      onClick={(e) => handleClick(e)}  // 每次创建新函数\n      data={{ name: 'John' }}           // 每次创建新对象\n    />\n  );\n}\n\nconst Child = React.memo(({ onClick, data }) => {\n  console.log('Child rendered');\n  return <button onClick={onClick}>{data.name}</button>;\n});\n```\n\n### ✅ 修复方案\n\n```jsx\nimport React, { useState, useCallback, useMemo } from 'react';\n\n// 1. 使用 useCallback 稳定函数引用\nfunction Parent() {\n  const [count, setCount] = useState(0);\n  const [name, setName] = useState('John');\n  \n  // ✅ 修复：使用 useCallback\n  const handleClick = useCallback((e) => {\n    console.log('clicked', e);\n  }, []); // 空数组表示函数不会改变\n  \n  // ✅ 修复：使用 useMemo 稳定对象引用\n  const data = useMemo(() => ({\n    name: name,\n    age: 25\n  }), [name]); // 只在 name 变化时更新\n\n  // ✅ 修复：使用 useMemo 稳定数组引用\n  const items = useMemo(() => ['item1', 'item2'], []);\n\n  return (\n    <Child \n      onClick={handleClick}\n      data={data}\n      items={items}\n    />\n  );\n}\n\n// 2. 使用 useRef 保持引用不变\nfunction ParentWithRef() {\n  const [count, setCount] = useState(0);\n  const stableCallback = useRef(() => {\n    console.log('stable callback');\n  }).current;\n\n  return <Child onAction={stableCallback} />;\n}\n\n// 3. 正确处理 children\nfunction ParentWithChildren() {\n  const [count, setCount] = useState(0);\n  \n  // ❌ 错误：每次创建新 children\n  return (\n    <Layout>\n      <div>Content</div>\n    </Layout>\n  );\n  \n  // ✅ 正确：使用 useMemo\n  const children = useMemo(() => <div>Content</div>, []);\n  return <Layout>{children}</Layout>;\n}\n\n// 4. 自定义比较函数\nconst Child = React.memo(\n  ({ name, age }) => {\n    return <div>{name} is {age} years old</div>;\n  },\n  // 自定义比较函数\n  (prevProps, nextProps) => {\n    return prevProps.name === nextProps.name;\n  }\n);\n```\n\n### 完整的优雅解决方案\n\n```jsx\n// ChildComponent.jsx\nconst ChildComponent = React.memo(({ \n  onClick, \n  items, \n  user \n}) => {\n  console.log('Child rendered');\n  return (\n    <div>\n      <button onClick={onClick}>Click me</button>\n      <ul>\n        {items.map(item => <li key={item.id}>{item.name}</li>)}\n      </ul>\n    </div>\n  );\n});\n\n// ParentComponent.jsx\nfunction ParentComponent() {\n  const [count, setCount] = useState(0);\n  \n  // 使用 useCallback 稳定函数\n  const handleClick = useCallback(() => {\n    console.log('clicked');\n  }, []);\n  \n  // 使用 useMemo 稳定复杂数据\n  const items = useMemo(() => [\n    { id: 1, name: 'Item 1' },\n    { id: 2, name: 'Item 2' }\n  ], []);\n  \n  // state 分离，避免不必要的渲染\n  const user = useMemo(() => ({\n    name: 'John',\n    age: 30\n  }), []);\n  \n  return (\n    <div>\n      <p>Count: {count}</p>\n      <ChildComponent\n        onClick={handleClick}\n        items={items}\n        user={user}\n      />\n    </div>\n  );\n}\n```\n\n### 调试技巧\n\n```jsx\n// 添加渲染计数\nconst Child = React.memo(({ name }) => {\n  const renderCount = useRef(0);\n  renderCount.current += 1;\n  \n  console.log(`Child rendered ${renderCount.current} times`);\n  \n  return <div>{name}</div>;\n});\n\n// 或使用 React DevTools Profiler\n// 安装 React DevTools 扩展，使用 Profiler 选项卡检查渲染原因\n```\n\n### 总结检查清单\n\n1. ✅ 函数 props 使用 `useCallback`\n2. ✅ 对象/数组 props 使用 `useMemo`\n3. ✅ children 使用 `useMemo` 或提取为组件\n4. ✅ 检查 shouldComponentUpdate 或自定义比较函数\n5. ✅ 分离变化频繁的 state\n6. ✅ 使用 React DevTools 调试渲染原因\n\n最根本的原则：**确保传递给子组件的 props 在父组件重新渲染时保持相同的引用**。",
+      "prompt_tokens": 35,
+      "completion_tokens": 1208,
+      "total_tokens": 1243,
+      "elapsed": 15.36508584022522
+    },
+    {
+      "content": "以下是对您今日工作内容的简要总结：\n\n**今日工作总结：**\n\n1. **上午**：召开产品规划会议，重点讨论A、B、C三个功能的优先级。经评估，最终决定优先开发A功能，因其对用户增长的促进作用最为显著。\n\n2. **下午**：与技术团队沟通确认开发排期，A功能预计将在两周内完成开发。",
+      "prompt_tokens": 53,
+      "completion_tokens": 77,
+      "total_tokens": 130,
+      "elapsed": 1.8685874938964844
+    },
+    {
+      "content": "这是一个非常核心且前沿的问题。**RLHF**的全称是**Reinforcement Learning from Human Feedback**，即**基于人类反馈的强化学习**。\n\n简单来说，RLHF是一种让大语言模型（如ChatGPT、Claude等）的**输出更符合人类偏好（如更准确、更有用、更安全、更符合伦理）**的关键训练技术。\n\n### 为什么需要 RLHF？\n\n在RLHF出现之前，大语言模型主要通过**预训练**和**微调**来学习。预训练让模型学到了海量的文本知识和语法（例如“俄罗斯套娃是嵌套的”），微调让它学会了指令遵循（例如“写一首关于俄罗斯套娃的诗”）。\n\n但这里有一个根本问题：模型最终输出的好坏，**评判标准是主观且复杂的**。比如“写一个有趣的冷笑话”，什么是“有趣”？这很难用固定的数学公式或标签来量化。传统的交叉熵损失函数只能衡量模型输出与“标准答案”的贴合度，无法衡量“有趣程度”或“无害性”。\n\nRLHF正是为了解决这个“**主观评价**”问题而诞生的。它利用人类的反馈作为奖励信号，来指导模型的学习方向。\n\n---\n\n### RLHF 的核心原理（三步走）\n\nRLHF 的核心流程可以分解为以下三个关键步骤，通常也称作**三步法**：\n\n#### 第一步：监督微调（SFT，Supervised Fine-Tuning）\n\n-   **目标**：让模型学会像人类一样回答问题，具备基本的指令遵循能力。\n-   **做法**：收集一批高质量的人工编写的问答对（例如，“请解释量子力学” -> 人类专家写一段通俗易懂的解释）。然后，用这些数据对预训练好的大模型进行常规的监督微调。\n-   **结果**：模型从一个“只会续写文本的机器”变成了一个“能回答问题、编写代码、进行翻译的助手”。这是基础，但此时模型还不懂“偏好”——它可能给出冗长、不准确甚至有害的答案，只要语法正确。\n\n#### 第二步：训练奖励模型（Reward Model， RM）\n\n这是 RLHF 最核心、最具创新性的一步。目标是用一个**模型**来模拟人类的偏好判断。\n\n-   **收集偏好数据**：用第一步微调好的模型生成多个回答问题（例如，针对同一个问题，模型给出4个不同的答案）。然后，**让人类标注员对这些答案从好到差进行排序**（例如，答案C > 答案A > 答案B > 答案D）。\n-   **训练奖励模型**：基于这些排序数据，训练一个独立的**奖励模型**。这个模型的任务是：**给定一个问题和一个答案，输出一个分数（奖励值）**。分数越高，代表这个答案越符合人类偏好。\n    -   训练方式：通常采用**对比学习**。比如，对于一组答案（C>A>B>D），奖励模型需要学会让C的得分高于A，A高于B，B高于D。\n-   **结果**：我们得到了一台“自动评分器”。它不再依赖固定的规则，而是通过学习人类的偏好数据，学会了判断“什么是好的回答”。\n\n#### 第三步：使用强化学习优化语言模型\n\n这是最终将“人类偏好”注入语言模型的一步。\n\n-   **目标**：让原始的语言模型（第一步SFT后的模型）学会生成**高奖励值**的答案，同时不偏离原始模型的分布太远。\n-   **做法（以PPO算法为例）**：\n    1.  **生成**：将当前的语言模型视为一个**策略**。给定一个输入，它生成一个输出。\n    2.  **评分**：将（输入，输出）配对送入训练好的**奖励模型**，得到一个奖励分数。\n    3.  **更新**：使用**近端策略优化（PPO，Proximal Policy Optimization）** 等强化学习算法，更新语言模型的参数。更新的目标是：**提高奖励模型给出的高分输出的概率，降低低分输出的概率**。\n    4.  **防止过拟合**：强化学习容易让模型“钻空子”，生成虽然奖励高但语义不通或胡言乱语的答案（例如，为了得到高奖励，模型只输出“好！好！”）。因此，通常会加入**KL散度惩罚项**，惩罚模型在更新后与原始SFT模型输出分布差异过大的行为，确保模型在学习人类偏好的同时，不丢失其语言能力和多样性。\n\n-   **结果**：经过这一步迭代优化后的语言模型，其输出不仅在语法和逻辑上正确，而且**在风格、安全性、有用性、创造性等方面都更贴合人类的期望**。这就是你所见到的高质量AI助手。\n\n---\n\n### 核心原理的直观总结\n\n> **RLHF的本质，是将人类主观的、难以量化的偏好，转化为一个可计算的“奖励函数”，然后通过强化学习，让模型学会最大化这个奖励。**\n\n可以类比于训练一只导盲犬：\n1.  **监督微调**：先教它基本的指令（坐下、等待、前进），这是基础技能。\n2.  **训练奖励模型**：你无法用程序写清楚“什么是正确的引导”，所以先训练一只经验丰富的导盲犬导师来评判：当它正确避障或找到出口时，给一个“好吃的”奖励；当它错误行动时，给一个“警告声”。\n3.  **强化学习**：让年轻的导盲犬在实际环境中尝试，并根据导师（奖励模型）给出的“好吃的”或“警告声”来调整自己的行为，最终学会完美的引导技巧。\n\n### RLHF 的优点和挑战\n\n-   **优点**：\n    -   **对齐人类价值观**：极大地改善了模型的有用性、诚实性和安全性。\n    -   **处理主观任务**：能处理那些无标准答案、但人类有明确偏好的任务（如创意写作、对话风格）。\n    -   **减少有害输出**：通过偏好数据，可以有效地降低模型生成偏见、歧视、有害信息的可能性。\n\n-   **挑战/局限**：\n    -   **成本极高**：需要大量高质量、经过标注的**人类偏好数据**，且数据标注员需要培训，成本高昂。\n    -   **奖励黑客（Reward Hacking）**：模型可能会学会“欺骗”奖励模型，生成高奖励但实际无用的内容（例如，堆砌明显正确的废话）。\n    -   **偏好对齐陷阱**：模型可能过度拟合标注员的偏好，导致缺乏多样性（“过度对齐”或“过于谨慎”）。\n    -   **奖励模型本身的偏差**：如果标注员的偏好本身有偏见，奖励模型也会继承这种偏见，从而导致模型输出偏向某一群体。\n\n### 总结\n\nRLHF 是大语言模型从“聪明但可能危险”走向“有用且安全可控”的关键技术。它通过**人类反馈**作为桥梁，将主观的“好”与“坏”转化为强化学习算法可以优化的目标，最终让模型的行为与人类的复杂期望高度对齐。这也是为什么现在的 ChatGPT 等模型能表现得如此“善解人意”的核心原因之一。",
+      "prompt_tokens": 18,
+      "completion_tokens": 1488,
+      "total_tokens": 1506,
+      "elapsed": 18.774035692214966
+    },
+    {
+      "content": "人工智能的发展已经改变了各行各业，但也引发了关于隐私和就业的伦理问题。",
+      "prompt_tokens": 29,
+      "completion_tokens": 16,
+      "total_tokens": 45,
+      "elapsed": 0.7877626419067383
+    },
+    {
+      "content": "尊敬的客户，您好！非常理解您对订单未及时发货的关切。经查询，您的订单（订单号：XXX）目前仍在处理中，预计最晚将在[具体日期，如：明天下午6点前]完成发货。由于近期订单量较大，物流环节可能存在延迟，我们已优先为您安排加急处理。若您希望进一步了解详情或需要调整配送方式，请随时通过[联系方式/在线客服]联系我们。对于给您带来的不便，我们深表歉意，并感谢您的耐心等待与理解！",
+      "prompt_tokens": 23,
+      "completion_tokens": 112,
+      "total_tokens": 135,
+      "elapsed": 2.051652669906616
+    }
+  ],
+  "full": [
+    {
+      "content": "可能原因：\n1. props 包含新对象/函数引用\n2. React.memo 未正确使用比较函数\n3. children 每次重新创建\n4. 使用了内联样式或对象字面量\n\n修复：使用 useCallback、useMemo 稳定引用\n\n```javascript\nimport React, { memo, useMemo, useCallback } from 'react';\n\nconst ChildComponent = memo(({ data, onClick }) => {\n  console.log('Child rendered');\n  return <div onClick={onClick}>{data.value}</div>;\n});\n\nconst ParentComponent = ({ fetchData }) => {\n  const [count, setCount] = useState(0);\n\n  // 稳定对象引用\n  const data = useMemo(() => ({ value: 'example' }), []);\n\n  // 稳定函数引用\n  const handleClick = useCallback(() => {\n    console.log('clicked');\n  }, []);\n\n  // 自定义比较函数（可选）\n  const areEqual = (prevProps, nextProps) => {\n    return prevProps.data.value === nextProps.data.value;\n  };\n\n  const ChildWithCustomCompare = memo(ChildComponent, areEqual);\n\n  return (\n    <>\n      <button onClick={() => setCount(c => c + 1)}>Update</button>\n      <ChildComponent data={data} onClick={handleClick} />\n    </>\n  );\n};\n```\n\n关键点：确保传递给子组件的 props 引用稳定。useCallback 稳定函数，useMemo 稳定对象/数组。",
+      "prompt_tokens": 82,
+      "completion_tokens": 313,
+      "total_tokens": 395,
+      "elapsed": 4.488072395324707
+    },
+    {
+      "content": "产品会定优先级：A > B > C。A 先做，因最促用户增长。技术排期确认：两周内完成。",
+      "prompt_tokens": 100,
+      "completion_tokens": 31,
+      "total_tokens": 131,
+      "elapsed": 1.99161958694458
+    },
+    {
+      "content": "RLHF: Reinforcement Learning from Human Feedback\n核心原理: 使用人类偏好作为奖励信号，微调语言模型。\n\n流程:\n1. 监督微调 (SFT): 用高质量人工标注数据，训练基础模型学会初步响应。\n2. 训练奖励模型 (Reward Model, RM): 收集多个模型输出, 人类排序/打分, 训练RM预测人类偏好分数。\n3. 强化学习微调: 利用PPO (Proximal Policy Optimization) 算法, 以RM的奖励分数为目标, 优化策略模型(即语言模型)。\n\n关键: 将难以量化的\"有用性、安全性\"转化为可优化的奖励函数, 引导模型对齐人类价值观。 避免模型产生有害或偏离意图的输出。",
+      "prompt_tokens": 65,
+      "completion_tokens": 159,
+      "total_tokens": 224,
+      "elapsed": 2.484741687774658
+    },
+    {
+      "content": "AI发展变革了行业，但也引发了隐私和就业方面的伦理担忧。",
+      "prompt_tokens": 76,
+      "completion_tokens": 15,
+      "total_tokens": 91,
+      "elapsed": 0.7885949611663818
+    },
+    {
+      "content": "抱歉，订单未及时发货深感歉意。已查询订单号[请提供]，确认物流状态。正常发货时效为24-48小时，超时将催促仓库优先处理。预计1-2天内更新物流信息。或申请退款？",
+      "prompt_tokens": 70,
+      "completion_tokens": 50,
+      "total_tokens": 120,
+      "elapsed": 1.2137460708618164
+    }
+  ],
+  "ultra": [
+    {
+      "content": "- Props对象每次新引用\n- 内联函数/对象/数组\n- children prop每次新创建\n- Context value未用useMemo\n- hooks依赖不当(useState setter不变)\n- useMemo/useCallback未正确使用\n- 组件内部状态无关更新\n\n修复: 用useCallback包裹回调, useMemo包裹对象/数组/计算值, 分离Context, 避免内联prop, 检查hooks依赖正确性。",
+      "prompt_tokens": 76,
+      "completion_tokens": 97,
+      "total_tokens": 173,
+      "elapsed": 2.0181989669799805
+    },
+    {
+      "content": "优先开发A功能（用户增长优先），两周排期。",
+      "prompt_tokens": 94,
+      "completion_tokens": 13,
+      "total_tokens": 107,
+      "elapsed": 0.8389217853546143
+    },
+    {
+      "content": "RLHF: 从人类反馈中强化学习\n\n核心原理：\n1. 监督微调 (SFT): 在高质量数据上预训练模型。\n2. 训练奖励模型 (RM): 收集人类对模型输出的偏好比较，训练一个模型预测人类喜好。\n3. 强化学习 (PPO): 用奖励模型作为环境，优化语言模型策略以最大化奖励，同时限制偏离原始模型太远。",
+      "prompt_tokens": 59,
+      "completion_tokens": 90,
+      "total_tokens": 149,
+      "elapsed": 1.4323430061340332
+    },
+    {
+      "content": "AI的发展改变了各行业，但也引发了关于隐私和就业的伦理问题。",
+      "prompt_tokens": 70,
+      "completion_tokens": 16,
+      "total_tokens": 86,
+      "elapsed": 0.7528855800628662
+    },
+    {
+      "content": "您好，非常理解您的等待。经查询，您的订单（如需提供单号请补充）因库存临时调整，预计明天会安排发出。我们会为您优先处理并关注物流更新。感谢您的耐心，后续如有问题可随时联系我们。",
+      "prompt_tokens": 64,
+      "completion_tokens": 51,
+      "total_tokens": 115,
+      "elapsed": 1.230780839920044
+    }
+  ],
+  "summary_full": {
+    "total_base": 3059,
+    "total_full": 961,
+    "out_base": 2901,
+    "out_full": 568
+  },
+  "summary_ultra": {
+    "total_base": 3059,
+    "total_ultra": 630,
+    "out_base": 2901,
+    "out_ultra": 267
+  }
+}
