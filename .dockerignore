@@ -1,0 +1,6 @@
+*.py
+__pycache__
+.env
+.venv
+cache.db
+*.db

@@ -1,0 +1,13 @@
+compressor:
+  enabled: true
+  level: full
+
+prompt_compressor:
+  enabled: false
+  mode: safe
+
+cache:
+  enabled: true
+  backend: memory
+  similarity_threshold: 0.95
+  ttl_minutes: 60

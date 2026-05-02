@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  tokcut:
+    build: .
+    container_name: tokcut
+    ports:
+      - "8800:8800"
+    volumes:
+      # Mount config for customization
+      - ./config/default.yaml:/app/config/default.yaml:ro
+      # Persistent SQLite cache (if using sqlite backend)
+      - tokcut_data:/app/data
+    environment:
+      - TOKCUT_CONFIG_PATH=/app/config/default.yaml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "com.tokcut.description=Multi-model token saving proxy"
+
+volumes:
+  tokcut_data:
+    driver: local
